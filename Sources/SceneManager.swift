@@ -22,7 +22,7 @@ public class SceneManager {
     var sceneDic = [UInt32: Scene]()
     
     /// 单例实例对象
-    public static var instance = SceneManager()
+    public static var sharedInstance = SceneManager()
     
     private init() {
         

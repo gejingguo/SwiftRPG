@@ -72,23 +72,22 @@ public class Scene {
             throw RPGError.ObjectIDHasExisted(object.uid)
         }
         
-        // 不启动屏机制直接返回
-        if self.isAllActived {
-            return
-        }
+        self.objectDic[object.uid] = ObjectEntry(object: object)
         
         let green = SceneUtil.getGreen(pos: object.pos)
         if green < 0 || green >= self.greenObject.count {
             throw RPGError.ObjectGreenInvalid(object.uid, green)
         }
         
-        self.objectDic[object.uid] = ObjectEntry(object: object)
         self.greenObject[green].objectDic[object.uid] = ObjectEntry(object: object)
         
-        if object.isActiveGreen {
-            self.greenObject[green].activeObjectCount += 1
-            if !self.activedGreenSet.contains(green) {
-                self.activedGreenSet.insert(green)
+        // 没有地图全部激活，就是屏激活
+        if !self.isAllActived {
+            if object.isActiveGreen {
+                self.greenObject[green].activeObjectCount += 1
+                if !self.activedGreenSet.contains(green) {
+                    self.activedGreenSet.insert(green)
+                }
             }
         }
     }
@@ -97,22 +96,22 @@ public class Scene {
     public func remove(object: GameObject) throws {
         self.objectDic.removeValue(forKey: object.uid)
         
-        if self.isAllActived {
-            return
-        }
-        
         let green = SceneUtil.getGreen(pos: object.pos)
         if green < 0 || green >= self.greenObject.count {
             throw RPGError.ObjectGreenInvalid(object.uid, green)
         }
         self.greenObject[green].objectDic.removeValue(forKey: object.uid)
         
-        if object.isActiveGreen {
-            self.greenObject[green].activeObjectCount -= 1
-            if self.greenObject[green].activeObjectCount <= 0 && self.activedGreenSet.contains(green) {
-                self.activedGreenSet.remove(green)
+        if !self.isAllActived {
+            if object.isActiveGreen {
+                self.greenObject[green].activeObjectCount -= 1
+                if self.greenObject[green].activeObjectCount <= 0 && self.activedGreenSet.contains(green) {
+                    self.activedGreenSet.remove(green)
+                }
             }
+
         }
+
     }
     
     /// 删除场景物件
@@ -130,9 +129,6 @@ public class Scene {
     
     /// 物件坐标更新后要调用该方法，更改物件所在屏
     public func onGameObjectPosChanged(object: GameObject, oldPos: Vector2D) throws {
-        if self.isAllActived {
-            return
-        }
         let oldGreen = SceneUtil.getGreen(pos: oldPos)
         let newGreen = SceneUtil.getGreen(pos: object.pos)
         if oldGreen == newGreen {
@@ -153,14 +149,17 @@ public class Scene {
         // 通知物件屏变化
         object.onGreenChanged(oldGreen: oldGreen, newGreen: newGreen)
         
-        // 激活所在屏
-        if object.isActiveGreen {
-            //self.activedGreenSet.insert(newGreen)
-            if self.greenObject[oldGreen].objectDic.isEmpty {
-                self.activedGreenSet.remove(oldGreen)
+        if !self.isAllActived {
+            // 激活所在屏
+            if object.isActiveGreen {
+                //self.activedGreenSet.insert(newGreen)
+                if self.greenObject[oldGreen].objectDic.isEmpty {
+                    self.activedGreenSet.remove(oldGreen)
+                }
+                self.activedGreenSet.insert(newGreen)
             }
-            self.activedGreenSet.insert(newGreen)
         }
+        
     }
     
     /// 帧更新
